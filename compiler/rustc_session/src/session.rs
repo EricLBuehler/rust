@@ -1305,6 +1305,11 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             sess.dcx().emit_err(errors::UnsupportedRegparmArch);
         }
     }
+    if sess.opts.unstable_opts.reg_struct_return {
+        if sess.target.arch != "x86" {
+            sess.dcx().emit_err(errors::UnsupportedRegStructReturnArch);
+        }
+    }
 
     // The code model check applies to `thunk` and `thunk-extern`, but not `thunk-inline`, so it is
     // kept as a `match` to force a change if new ones are added, even if we currently only support
@@ -1356,6 +1361,12 @@ enum IncrCompSession {
 /// A wrapper around an [`DiagCtxt`] that is used for early error emissions.
 pub struct EarlyDiagCtxt {
     dcx: DiagCtxt,
+}
+
+impl Default for EarlyDiagCtxt {
+    fn default() -> Self {
+        Self::new(ErrorOutputType::default())
+    }
 }
 
 impl EarlyDiagCtxt {
