@@ -6,7 +6,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::MultiSpan;
 use rustc_errors::codes::*;
 use rustc_hir::def::{CtorKind, DefKind};
-use rustc_hir::{Node, Safety, intravisit};
+use rustc_hir::{Node, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, ObligationCauseCode};
 use rustc_lint_defs::builtin::{
@@ -31,7 +31,7 @@ use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_type_ir::fold::TypeFoldable;
 use tracing::{debug, instrument};
 use ty::TypingMode;
-use {rustc_attr as attr, rustc_hir as hir};
+use {rustc_attr_parsing as attr, rustc_hir as hir};
 
 use super::compare_impl_item::check_type_bounds;
 use super::*;
@@ -103,7 +103,7 @@ fn allowed_union_or_unsafe_field<'tcx>(
             // Fallback case: allow `ManuallyDrop` and things that are `Copy`,
             // also no need to report an error if the type is unresolved.
             ty.ty_adt_def().is_some_and(|adt_def| adt_def.is_manually_drop())
-                || ty.is_copy_modulo_regions(tcx, typing_env)
+                || tcx.type_is_copy_modulo_regions(typing_env, ty)
                 || ty.references_error()
         }
     };
@@ -161,7 +161,7 @@ fn check_unsafe_fields(tcx: TyCtxt<'_>, item_def_id: LocalDefId) {
     };
     let typing_env = ty::TypingEnv::non_body_analysis(tcx, item_def_id);
     for field in def.all_fields() {
-        if field.safety != Safety::Unsafe {
+        if !field.safety.is_unsafe() {
             continue;
         }
         let Ok(field_ty) = tcx.try_normalize_erasing_regions(typing_env, field.ty(tcx, args))
